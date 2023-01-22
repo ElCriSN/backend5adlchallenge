@@ -1,53 +1,58 @@
+const { Pool } = require('pg')
 const format = require('pg-format')
-const { Pool } = require("pg");
+const pool = new Pool(
+    {
+        'user': 'postgres',
+        'host': 'localhost',
+        'password': '0l4&nd4_ w3n0o5W',
+        'database': 'joyas',
+        'port': 5432,
+        allowExitOnIdle: true
+    }
+)
 
-const pool = new Pool({
-    user: "postgres",
-    host: "localhost",
-    password: "0l4&nd4_ w3n0o5W",
-    database: "joyas",
-    port: 5432,
-    allowExitOnIdle: true
-});
+const getJewels = async ({ limits = 15, order_by = 'id_ASC', page = 0 }) => {
+    const [campo, direccion] = order_by.split("_")
 
-const getJewels = async ({ limits = 10, order_by = "id_ASC", page = 1 }) => {
-    const [campo, direction] = order_by.split("_");
-    const offset = (page - 1) * limits
-    const formattedQuery = format("SELECT * FROM inventario ORDER BY %s %s LIMIT %s OFFSET %s", campo, direction, limits, offset)
-    pool.query(formattedQuery);
-    const { rows: jewels } = await pool.query(formattedQuery);
+    const offset = page * limits
+    const formattedQuery = format("SELECT * FROM inventario ORDER BY %s %s LIMIT %s OFFSET %s", campo, direccion, limits, offset)
+
+    const { rows: jewels } = await pool.query(formattedQuery)
     return jewels
 }
 
-const getJewelsByFilter = async ({ precio_min, precio_max, metal, categoria}) => {
+const getJewelsByFilter = async ({ precio_min, precio_max, categoria, metal }) => {
     let filtros = []
-    const values = []
-    const agregarFiltro = (campo, comparador, valor) => {
+    let values = []
+
+    const addFilter = (campo, comparador, valor) => {
         values.push(valor)
-        const {length} = filtros
-        filtros.push(`${campo} ${comparador} $${length + 1}`)
+        const { length } = filtros
+        filtros.push(`${campo} ${comparador} $${length + 1}`) 
     }
-    if (precio_max) agregarFiltro('precio', '<=', precio_max)
-    if (precio_min) agregarFiltro('precio', '>=', precio_min)
-    if (metal) agregarFiltro('metal', '=', metal)
-    if (categoria) agregarFiltro('categoria', '=', categoria)
 
-    let consulta = "SELECT * FROM inventario"
+    if(precio_min) addFilter('precio', '>=', precio_min)
+    if(precio_max) addFilter('precio', '<=', precio_max)
+    if(categoria) addFilter('categoria', '=', categoria)
+    if(metal) addFilter('metal', '=', metal)
 
-    if (filtros.length > 0) {
-        filtros = filtros.join( " AND ")
-        consulta += ` WHERE ${filtros}`
-    }
-    const { rows : joyas } = await pool.query(consulta, values)
+    let query = "SELECT * FROM inventario"
+
+    if(filtros.length > 0) {
+        filtros = filtros.join(" AND ")
+        query += ` WHERE ${filtros}` 
+    } 
+
+    const { rows: joyas } = await pool.query(query, values)
     return joyas
 }
 
+const prepareHATEOAS = async (jewels) => {
 
-prepareHATEOAS = (jewels) => {
-    const results = jewels.map((j)=> {
+    const results = jewels.map((j) => {
         return {
             name: j.nombre,
-            href: `/jewels/jewel/${j.id}`,
+            href: `./joyas/joya/${j.id}`
         }
     }).slice(0, 9)
     const total = jewels.length
@@ -58,13 +63,6 @@ prepareHATEOAS = (jewels) => {
     return HATEOAS
 }
 
-const reportQuery = async (req, res, next) => {
-    const parameters = req.params
-    const url = req.url
-    console.log(`
-    Hoy ${new Date()}
-    Se ha recibido una Consulta en la Ruta ${url} 😃, con los Parámetros:
-    `, parameters)
-    next()
-}
-module.exports = { getJewels, getJewelsByFilter, prepareHATEOAS, reportQuery }
+
+
+module.exports = { getJewels, getJewelsByFilter, prepareHATEOAS }

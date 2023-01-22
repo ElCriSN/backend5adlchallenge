@@ -1,30 +1,27 @@
+const { getJewels, getJewelsByFilter, prepareHATEOAS } = require('./queries')
+const { reportarConsulta } = require('./middlewares/reportarconsulta')
 const express = require('express')
 const app = express()
-app.listen(3000, console.log('Server ON 😀 '))
 
-const { getJewels, getJewelsByFilter, prepareHATEOAS, reportQuery } = require('./queries')
+app.use(express.json())
+app.listen(3000, () => { console.log("SERVER OOOON =DD!") })
 
-app.get('/joyas', reportQuery, async (req, res) => {
-  try {
-    const queryStrings = req.query
-    const jewels = await getJewels(queryStrings);
-    const HATEOAS = await prepareHATEOAS(jewels)
-    res.json(HATEOAS)
-  } catch (error) {
-    res.status(500).send(error)
-  }
+app.get("/joyas", reportarConsulta, async (req, res) => {
+    try {
+        const joyas = await getJewels(req.query)
+        const HATEOAS = await prepareHATEOAS(joyas)
+        res.json(HATEOAS)
+    } catch (err) {
+        res.status(500).send(err)
+    }
+
 })
 
-app.get('/joyas/filtros', reportQuery, async (req, res) => {
-  try {
-    const queryStrings = req.query
-    const jewels = await getJewelsByFilter(queryStrings)
-    res.json(jewels)
-  } catch (error) {
-    res.status(500).send(error)
-  }
-})
-
-app.get("*", reportQuery, (req, res) => {
-  res.status(404).send("Esta Ruta no Existeee =)!!")
+app.get("/joyas/filtros", reportarConsulta, async (req, res) => {
+    try {
+        const joyas = await getJewelsByFilter(req.query)
+        res.json(joyas)
+    } catch (err) {
+        res.status(500).send(err)
+    }
 })
